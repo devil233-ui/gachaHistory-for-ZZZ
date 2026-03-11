@@ -1,2 +1,25 @@
-# gachaHistory-for-ZZZ
-vibecoding的产物，云崽单js，自用（is合理也可能采纳）
+# 个人认为的几大亮点
+1.读取zzz-plugin和atlas的别名（远程+本地）
+
+2.纯文本极速输出
+
+<details>
+  <summary>3.视觉效果还不错</summary>
+  
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/227ad6f8-4d74-4b9d-affa-7730c6776a85" />
+
+<img width="400" height="1000" alt="image" src="https://github.com/user-attachments/assets/ca31e64e-a59e-46b1-9254-47d54932ccfc" />
+
+</details>
+
+4.本地备份，且查询时优先于远程确保用不出错
+
+# 可用指令：
+
+## %xx复刻统计（xx为角色名音擎名或别名和星级）
+
+如：%仙贝复刻统计 %师父专武复刻统计 %a级音擎复刻统计
+
+## %(当前|本期|当期)卡池
+
+注：卡池时间目前是手动维护，随代码更新
