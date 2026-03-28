@@ -415,7 +415,7 @@ async fetchData(forceFetch = false) {
         // 自动迭代写入本地，清洗冗余字段，只保存最精简的 5 个核心数据
         try {
             const exportData = uniqueData.map(p => ({
-                title: p._title|| '',
+                title: p.title|| '',
                 type: p._type,
                 version: p._version,
                 timer: p.timer,
