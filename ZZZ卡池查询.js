@@ -1,16 +1,4 @@
-//作者devil
-let plugin;
-try {
-    plugin = (await import('../../lib/plugins/plugin.js')).default;
-} catch (e) {
-    try {
-        plugin = (await import('../../../lib/plugins/plugin.js')).default;
-    } catch (e2) {
-        plugin = global.plugin;
-    }
-}
-
-import fetch from 'node-fetch'
+//作者devilimport fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
