@@ -1,4 +1,4 @@
-// 兼容性导入逻辑
+//作者devil
 let plugin;
 try {
     plugin = (await import('../../lib/plugins/plugin.js')).default;
