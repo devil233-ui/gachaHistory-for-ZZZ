@@ -23,3 +23,8 @@
 ## %(当前|本期|当期)卡池
 
 注：卡池时间目前是手动维护，随代码更新
+
+# 安装
+```
+curl -o "./plugins/example/ZZZ卡池查询.js" "https://github.com/devil233-ui/gachaHistory-for-ZZZ/raw/refs/heads/master/ZZZ%E5%8D%A1%E6%B1%A0%E6%9F%A5%E8%AF%A2.js"
+```
