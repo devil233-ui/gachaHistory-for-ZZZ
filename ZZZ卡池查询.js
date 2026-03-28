@@ -3,9 +3,7 @@ import fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
-const REPO_API_URL = 'https://api.github.com/repos/iaoongin/GachaClock/contents/spider/data/zzz';
-const RAW_BASE_URL = 'https://raw.githubusercontent.com/iaoongin/GachaClock/main/spider/data/zzz/';
-const FALLBACK_URL = RAW_BASE_URL + 'history.json';
+const HISTORY_JSON_URL = 'https://raw.githubusercontent.com/iaoongin/GachaClock/main/spider/data/zzz/history.json';
 
 const ALIAS_SOURCES = [
     'https://raw.githubusercontent.com/ZZZure/ZZZ-Plugin/main/defSet/alias.yaml',
@@ -21,16 +19,7 @@ const GAME_CONFIG = {
     type: '调频'
 };
 
-// 【核心防伪：全服已知A级图鉴】
-const KNOWN_A_RANKS = new Set([
-    "安比", "妮可", "比利", "可琳", "安东", "本", "苍角", "露西", "派派", "赛斯", "真斗", "波可娜", "潘引壶",
-    "旋钻机-赤轴", "含羞恶面", "比格气缸", "聚宝箱", "仿制星徽引擎", "家政员", 
-    "德玛拉电池Ⅱ型", "维序者-特化型", "轰鸣座驾", "好斗的阿炮", "裁纸刀", 
-    "震元奇枢", "燔火胧夜", "双生泣星", "时间切片", "街头巨星", "正版星徽引擎", 
-    "左轮转子", "贵重骨核", "春日融融", "巨浪气缸", "电磁炉", "玩具手枪"
-]);
-
-// 【完美对齐】用户手动校正的时间轴推演罗盘
+// 手动校正的时间轴
 const VERSION_TIMELINE = [
     { d: '2024/07/04', v: '1.0上半' }, { d: '2024/07/24', v: '1.0下半' },
     { d: '2024/08/14', v: '1.1上半' }, { d: '2024/09/04', v: '1.1下半' },
@@ -360,14 +349,12 @@ export class CardPoolQuery extends plugin {
         return { startTime: isNaN(startTime.getTime()) ? null : startTime, endTime: isNaN(endTime.getTime()) ? null : endTime };
     }
 
-    // ================= 极速实时读写与绝对优先级 =================
-    async fetchData(forceFetch = false) {
+async fetchData(forceFetch = false) {
         const now = Date.now();
         let localBase = [];
         let lastModified = 0;
         const dataPath = path.join(process.cwd(), 'data', 'zzz_full_history.json');
         
-        // 1. 永远先读取本地硬盘文件 (如果你修改了JSON，这里立刻读到最新内容)
         if (fs.existsSync(dataPath)) {
             try {
                 localBase = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
@@ -378,24 +365,21 @@ export class CardPoolQuery extends plugin {
         }
 
         let needRemote = true;
-        // 2. 本地绝对优先级判定
         if (!forceFetch) {
-            // 只要本地有数据，并且距离上次文件修改不到 2 小时，绝对不碰网络！直接秒回
             if (localBase.length > 0 && (now - lastModified < 2 * 60 * 60 * 1000)) {
                 needRemote = false;
             }
         }
 
-        // 触发极速响应，即改即生效
+        // 本地护盾生效期间，秒回本地数据
         if (!needRemote) {
             return localBase;
         }
 
-        // 3. 只有超过两小时，或者本地查不到强制触发时，才会走到这里请求远端
         let allData = [];
         const localEndTimes = new Set();
         
-        // 建立最严密的覆盖护盾：提取本地 JSON 里已有的所有卡池结束时间
+        // 建立防覆盖护盾
         localBase.forEach(p => {
             const t = p._endTimeStamp || (p.timer ? new Date(p.timer.split('~')[1].trim()).getTime() : 0);
             const type = p._type || (String(p.type || '').includes('角色') ? '角色' : '武器');
@@ -403,47 +387,42 @@ export class CardPoolQuery extends plugin {
         });
 
         try {
-            const dirRes = await fetch(REPO_API_URL, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/vnd.github.v3+json' }, timeout: 15000 });
-            if (dirRes.ok) {
-                const fileNames = (await dirRes.json()).filter(f => f.type === 'file' && /^\d+_\d+.*\.json$/.test(f.name)).map(f => f.name);
-                for (let i = 0; i < fileNames.length; i += 5) {
-                    const batch = fileNames.slice(i, i + 5).map(async name => {
-                        const res = await fetch(RAW_BASE_URL + name);
-                        if (res.ok) { 
-                            const json = await res.json(); 
-                            const arr = Array.isArray(json) ? json : [json];
-                            arr.forEach(remotePool => {
-                                let timerRaw = remotePool.timer;
-                                if (Array.isArray(timerRaw)) timerRaw = timerRaw.join(' ~ ');
-                                if (!timerRaw && remotePool.start && remotePool.end) timerRaw = `${remotePool.start} ~ ${remotePool.end}`;
-                                if (!timerRaw || !String(timerRaw).includes('~')) return;
+            // 直接高速拉取 CDN 上的 json，彻底免疫限流
+            const res = await fetch(HISTORY_JSON_URL, { timeout: 15000 });
+            if (res.ok) { 
+                const json = await res.json(); 
+                const arr = Array.isArray(json) ? json : [json];
+                arr.forEach(remotePool => {
+                    let timerRaw = remotePool.timer;
+                    if (Array.isArray(timerRaw)) timerRaw = timerRaw.join(' ~ ');
+                    if (!timerRaw && remotePool.start && remotePool.end) timerRaw = `${remotePool.start} ~ ${remotePool.end}`;
+                    
+                    // 兼容特殊的连接符号
+                    if (timerRaw) timerRaw = String(timerRaw).replace(/[-—]/g, '~');
+                    if (!timerRaw || !timerRaw.includes('~')) return;
 
-                                const parts = String(timerRaw).split('~');
-                                if (parts.length < 2) return;
-                                
-                                const t = new Date(parts[1].trim()).getTime();
-                                let rawType = String(remotePool.type || remotePool.pool_type || '').toLowerCase();
-                                let pType = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
-                                
-                                // 【终极防覆盖】：只要发现本地已经存在这个时间段的卡池，直接无情抛弃远端的垃圾数据！
-                                if (!localEndTimes.has(`${pType}_${t}`)) {
-                                    allData.push(remotePool);
-                                }
-                            });
-                        }
-                    });
-                    await Promise.all(batch);
-                }
+                    const parts = timerRaw.split('~');
+                    if (parts.length < 2) return;
+                    
+                    const t = new Date(parts[1].trim()).getTime();
+                    let rawType = String(remotePool.type || remotePool.pool_type || '').toLowerCase();
+                    let pType = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
+                    
+                    // 拦截旧数据，只存入新卡池
+                    if (!localEndTimes.has(`${pType}_${t}`)) {
+                        allData.push(remotePool);
+                    }
+                });
+            } else {
+                logger.error(`[卡池查询] 远程数据拉取失败，状态码: ${res.status}`);
             }
         } catch (err) { 
-            logger.error(`[卡池查询] 远程更新检查失败: ${err.message}`);
+            logger.error(`[卡池查询] 远程网络请求异常: ${err.message}`);
         }
         
         const aliasMap = await this.getAliasMap();
         
-        // 将本地最高优先级的纯净数据 + 洗好的新远程数据 合并
         allData.push(...localBase);
-        
         allData = this.preprocessData(allData, aliasMap);
         
         const uniqueData = [], seen = new Set();
@@ -452,7 +431,7 @@ export class CardPoolQuery extends plugin {
             if (!seen.has(key)) { seen.add(key); uniqueData.push(p); }
         }
         
-        // 覆写文件，彻底迭代更新本地 JSON
+        // 自动迭代写入本地
         try {
             const dataDir = path.join(process.cwd(), 'data');
             if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
