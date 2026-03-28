@@ -19,26 +19,6 @@ const GAME_CONFIG = {
     type: '调频'
 };
 
-// 手动校正的时间轴
-const VERSION_TIMELINE = [
-    { d: '2024/07/04', v: '1.0上半' }, { d: '2024/07/24', v: '1.0下半' },
-    { d: '2024/08/14', v: '1.1上半' }, { d: '2024/09/04', v: '1.1下半' },
-    { d: '2024/09/25', v: '1.2上半' }, { d: '2024/10/16', v: '1.2下半' },
-    { d: '2024/11/06', v: '1.3上半' }, { d: '2024/11/27', v: '1.3下半' },
-    { d: '2024/12/18', v: '1.4上下半' },
-    { d: '2025/01/22', v: '1.5上半' }, { d: '2025/02/12', v: '1.5下半' },
-    { d: '2025/03/12', v: '1.6上半' }, { d: '2025/04/02', v: '1.6下半' },
-    { d: '2025/04/23', v: '1.7上半' }, { d: '2025/05/14', v: '1.7下半' },
-    { d: '2025/06/06', v: '2.0上半' }, { d: '2025/06/25', v: '2.0下半' },
-    { d: '2025/07/16', v: '2.1上半' }, { d: '2025/08/06', v: '2.1下半' },
-    { d: '2025/09/04', v: '2.2上半' }, { d: '2025/09/24', v: '2.2下半' },
-    { d: '2025/10/15', v: '2.3上半' }, { d: '2025/11/05', v: '2.3下半' },
-    { d: '2025/11/26', v: '2.4上半' }, { d: '2025/12/17', v: '2.4下半' },
-    { d: '2025/12/30', v: '2.5上半' }, { d: '2026/01/21', v: '2.5下半' }, 
-    { d: '2026/02/06', v: '2.6上半' }, { d: '2026/03/04', v: '2.6下半' },
-    { d: '2026/03/24', v: '2.7上半' }, { d: '2026/04/13', v: '2.7下半' }
-].map(x => ({ time: new Date(x.d + ' 00:00:00').getTime(), v: x.v })).sort((a, b) => a.time - b.time);
-
 export class CardPoolQuery extends plugin {
     constructor() {
         super({
@@ -225,13 +205,13 @@ export class CardPoolQuery extends plugin {
         const roles = activePools.filter(p => p._type === '角色');
         if (roles.length > 0) {
             replyMsg += `【🎮 角色调频】\n`;
-            replyMsg += ` ◈ 角色：\n   ${roles.map(p => `S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n   ')}\n`;
+            replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
         }
         
         const weapons = activePools.filter(p => p._type === '武器');
         if (weapons.length > 0) {
             replyMsg += `\n【💿 音擎调频】\n`;
-            replyMsg += ` ◈ 音擎：\n   ${weapons.map(p => `S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n   ')}\n`;
+            replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
         }
         return e.reply(replyMsg.trim());
     }
@@ -271,11 +251,11 @@ export class CardPoolQuery extends plugin {
             
             const roles = stagePools.filter(p => p._type === '角色');
             if (roles.length > 0) {
-                replyMsg += ` ◈ 角色：\n   ${roles.map(p => `S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n   ')}\n`;
+                replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
             }
             const weapons = stagePools.filter(p => p._type === '武器');
             if (weapons.length > 0) {
-                replyMsg += ` ◈ 音擎：\n   ${weapons.map(p => `S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n   ')}\n`;
+                replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
             }
         }
         return e.reply(replyMsg.trim());
@@ -337,7 +317,7 @@ export class CardPoolQuery extends plugin {
 
         const firstHit = records[0];
         let replyMsg = `╭══ 🔍 ${queryName} 历史卡池 ══╮\n✨ 评级: ${firstHit._s.includes(queryName) ? 'S级' : 'A级'} | 📦 类型: ${firstHit._type === '武器' ? '音擎' : '角色'}\n╰═════════════╯\n`;
-        replyMsg += records.map((pool, i) => `[第${i + 1}次] v${pool._version}\n ⏰ ${pool.timer.replace(/ \d{2}:\d{2}:\d{2}/g, '').replace(' ~ ', '~')}`).join('\n\n');
+        replyMsg += records.map((pool, i) => `[第${i + 1}次] v${pool._version} ${pool.title ? `| ${pool.title}` : ''}\n ⏰ ${pool.timer.replace(/ \d{2}:\d{2}:\d{2}/g, '').replace(' ~ ', '~')}`).join('\n\n');
         return e.reply(replyMsg);
     }
 
@@ -371,9 +351,10 @@ async fetchData(forceFetch = false) {
             }
         }
 
-        // 本地护盾生效期间，秒回本地数据
-        if (!needRemote) {
-            return localBase;
+        // 本地护盾生效期间，将读取到的精简数据过一遍预处理
+        if (!needRemote && localBase.length > 0) {
+            const aliasMap = await this.getAliasMap();
+            return this.preprocessData(localBase, aliasMap);
         }
 
         let allData = [];
@@ -431,11 +412,19 @@ async fetchData(forceFetch = false) {
             if (!seen.has(key)) { seen.add(key); uniqueData.push(p); }
         }
         
-        // 自动迭代写入本地
+        // 自动迭代写入本地，清洗冗余字段，只保存最精简的 5 个核心数据
         try {
+            const exportData = uniqueData.map(p => ({
+                title: p._title|| '',
+                type: p._type,
+                version: p._version,
+                timer: p.timer,
+                s: p._s,
+                a: p._a
+            }));
             const dataDir = path.join(process.cwd(), 'data');
             if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-            fs.writeFileSync(dataPath, JSON.stringify(uniqueData, null, 2), 'utf-8');
+            fs.writeFileSync(dataPath, JSON.stringify(exportData, null, 2), 'utf-8');
         } catch (err) { }
 
         return uniqueData;
@@ -448,45 +437,18 @@ async fetchData(forceFetch = false) {
             let rawType = String(pool.type || pool.pool_type || '').toLowerCase();
             pool._type = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
             
-            // 无论是本地已经洗白的数据，还是远端的乱序数据，统统过一遍
+            // 拥抱新结构：直接提取明确的 s 和 a 字段
             let sRaw = pool.s || pool.up5 || pool['5'] || pool._s || [];
             let aRaw = pool.a || pool.up4 || pool['4'] || pool._a || [];
-            let gachas = pool.gachas || [];
             
-            let allNames = [];
-            if (sRaw) allNames.push(...(Array.isArray(sRaw) ? sRaw : [sRaw]));
-            if (aRaw) allNames.push(...(Array.isArray(aRaw) ? aRaw : [aRaw]));
-            if (gachas.length > 0) allNames.push(...gachas);
+            // 新格式中 s 变成了单字符串（如 "s": "南宫羽"），这里兼容转为数组
+            let parsedS = (Array.isArray(sRaw) ? sRaw : [sRaw]).filter(Boolean).map(x => typeof x === 'object' ? x.title || x.name : String(x));
+            let parsedA = (Array.isArray(aRaw) ? aRaw : [aRaw]).filter(Boolean).map(x => typeof x === 'object' ? x.title || x.name : String(x));
 
-            let parsedS = [];
-            let parsedA = [];
-            let seenNames = new Set();
+            if (parsedS.length === 0) parsedS.push(`未知S级${pool._type}`);
 
-            const extractName = (item) => {
-                if (typeof item === 'object' && item !== null) return item.title || item.name || '';
-                return String(item);
-            };
-
-            allNames.forEach(item => {
-                let name = extractName(item).replace(/[「」【】]/g, '').trim();
-                if (!name || seenNames.has(name)) return;
-                seenNames.add(name);
-                
-                let normName = this.normalizeNameSync(name, aliasMap);
-                if (KNOWN_A_RANKS.has(normName)) {
-                    parsedA.push(name);
-                } else {
-                    // 非 A 级（比如你手动在 json 里加的角色/武器），都会完美保存到 S 级里
-                    parsedS.push(name);
-                }
-            });
-
-            if (parsedS.length === 0) {
-                parsedS.push(`未知S级${pool._type}`);
-            }
-
-            pool._s = parsedS.map(x => this.normalizeNameSync(x, aliasMap));
-            pool._a = parsedA.map(x => this.normalizeNameSync(x, aliasMap));
+            pool._s = parsedS.map(x => this.normalizeNameSync(x.replace(/[「」【】]/g, '').trim(), aliasMap));
+            pool._a = parsedA.map(x => this.normalizeNameSync(x.replace(/[「」【】]/g, '').trim(), aliasMap));
 
             const parts = pool.timer.split('~');
             pool._endTimeStamp = parts.length >= 2 ? new Date(parts[1].trim()).getTime() || 0 : 0;
@@ -496,6 +458,7 @@ async fetchData(forceFetch = false) {
         
         for (let i = 0; i < data.length; i++) {
             const p = data[i];
+            // 自动推算“x.x版本更新后”的具体日期
             if (p.timer.includes('版本更新后')) {
                 let prevEnd = 0;
                 for (let j = i - 1; j >= 0; j--) { if (data[j]._endTimeStamp > 0 && data[j]._endTimeStamp < p._endTimeStamp) { prevEnd = data[j]._endTimeStamp; break; } }
@@ -504,16 +467,12 @@ async fetchData(forceFetch = false) {
                     p.timer = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} 11:00:00 ~ ${p.timer.split('~')[1]}`;
                 } else p.timer = `2024/07/04 10:00:00 ~ ${p.timer.split('~')[1]}`;
             }
-            const startT = new Date(p.timer.split('~')[0].trim()).getTime();
-            let matchedVer = null, minDiff = 12 * 24 * 60 * 60 * 1000;
-            if (!isNaN(startT)) {
-                for (const t of VERSION_TIMELINE) {
-                    const diff = Math.abs(t.time - startT);
-                    if (diff < minDiff) { minDiff = diff; matchedVer = t.v; }
-                }
+            
+            if (p.version && typeof p.version === 'string') {
+                p._version = String(p.version).trim();
+            } else {
+                p._version = String(p.title || '').replace(/(独家|音擎|频段|「|」|期)/g, '').trim() || '未知版本';
             }
-            if (p.version && /\d+\.\d+/.test(p.version)) p._version = String(p.version).trim();
-            else p._version = matchedVer || String(p.title || '').replace(/(独家|音擎|频段|「|」|期)/g, '').trim() || '未知版本';
         }
         return data;
     }
