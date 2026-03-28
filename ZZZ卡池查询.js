@@ -1,4 +1,5 @@
-//作者devilimport fetch from 'node-fetch'
+//作者devil
+import fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
