@@ -5,14 +5,21 @@
 
 <details>
   <summary>3.视觉效果还不错</summary>
+<img width="368" height="500" alt="image" src="https://github.com/user-attachments/assets/1fe36ff4-6a4b-4a72-a515-5249b99421d7" />
   
-<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/227ad6f8-4d74-4b9d-affa-7730c6776a85" />
+——————————————————————————————————————————————
 
-<img width="400" height="1000" alt="image" src="https://github.com/user-attachments/assets/ca31e64e-a59e-46b1-9254-47d54932ccfc" />
+<img width="414" height="368" alt="image" src="https://github.com/user-attachments/assets/ac928742-bf68-418b-aedf-058597384aae" />
+
+——————————————————————————————————————————————
+
+<img width="200" height="500" alt="image" src="https://github.com/user-attachments/assets/ca31e64e-a59e-46b1-9254-47d54932ccfc" />
 
 </details>
 
-4.本地备份，且查询时优先于远程确保效率和准确性（事实上目前的数据库不太理想，如有更好的欢迎推荐）
+4.本地备份，且查询时优先于远程确保效率和准确性
+
+5.智能转换`xx版本更新后`为准确时间
 
 # 可用指令：
 
@@ -20,9 +27,7 @@
 
 如：%仙贝复刻统计 %师父专武复刻统计 %a级音擎复刻统计
 
-## %(当前|本期|当期)卡池
-
-注：卡池时间目前是手动维护，随代码更新
+## %(当前|本期|当期|X.X)卡池
 
 # 安装
 ```
