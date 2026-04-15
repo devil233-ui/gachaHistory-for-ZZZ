@@ -27,12 +27,12 @@ export class CardPoolQuery extends plugin {
             event: "message",
             priority: -114514,
             rule: [
-                { reg: '复刻统计', fnc: 'dispatchHandler' },
-                { reg: '卡池$', fnc: 'dispatchVersionHandler' },
-                { reg: '(当前|本期|当期)卡池$', fnc: 'queryCurrentPool' }
+                { reg: '^(#绝区零|%|绝区零).*复刻统计$', fnc: 'dispatchHandler' },
+                { reg: '^(#绝区零|%|绝区零)v?(\\d+\\.\\d+)(上半|下半|上下半)?卡池$', fnc: 'dispatchVersionHandler' },
+                { reg: '^(#绝区零|%|绝区零)(当前|本期|当期)卡池$', fnc: 'queryCurrentPool' }
             ]
         });
-        
+
         this.aliasMap = null;
     }
 
@@ -54,7 +54,7 @@ export class CardPoolQuery extends plugin {
             path.join(process.cwd(), 'plugins', 'Nwflower-zzz-atlas', 'othername')
         ];
         for (const dirPath of atlasDirs) { if (this.mergeLocalDir(dirPath, finalMap)) loadedSources++; }
-        if (loadedSources === 0 || !this.checkKeyExists(finalMap, '般岳')) { 
+        if (loadedSources === 0 || !this.checkKeyExists(finalMap, '般岳')) {
             for (const url of ALIAS_SOURCES) { await this.mergeRemoteYaml(encodeURI(url), finalMap); }
         }
         this.aliasMap = finalMap;
@@ -112,7 +112,7 @@ export class CardPoolQuery extends plugin {
         const lines = yamlStr.split(/\r?\n/);
         let currentKey = null;
         lines.forEach(line => {
-            const rawLine = line.trimEnd(); 
+            const rawLine = line.trimEnd();
             const trimmedLine = rawLine.trim();
             if (!trimmedLine || trimmedLine.startsWith('#')) return;
             const keyMatch = rawLine.match(/^\s*['"]?(.+?)['"]?:\s*$/);
@@ -201,17 +201,17 @@ export class CardPoolQuery extends plugin {
             const timerStr = (sample.timer || '').replace(/ \d{2}:\d{2}:\d{2}/g, '').replace(' ~ ', '~');
             replyMsg += `🏷️ 版本：v${sample._version}\n⏰ 时间：${timerStr}\n⏳ 状态：剩余约 ${remainingDays} 天\n╰═════════════╯\n`;
         }
-        
+
         const roles = activePools.filter(p => p._type === '角色');
         if (roles.length > 0) {
             replyMsg += `【🎮 角色调频】\n`;
-            replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
+            replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length > 0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
         }
-        
+
         const weapons = activePools.filter(p => p._type === '武器');
         if (weapons.length > 0) {
             replyMsg += `\n【💿 音擎调频】\n`;
-            replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
+            replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length > 0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
         }
         return e.reply(replyMsg.trim());
     }
@@ -219,7 +219,7 @@ export class CardPoolQuery extends plugin {
     async handleVersionQuery(e, version, phase) {
         let data = await this.fetchData();
         if (!data) return e.reply('数据源连接失败');
-        
+
         let pools = data.filter(pool => {
             if (!pool._version.includes(version)) return false;
             return !phase || pool._version.includes(phase);
@@ -248,14 +248,14 @@ export class CardPoolQuery extends plugin {
             const stagePools = pools.filter(p => p._version === stage);
             let timerDisplay = stagePools[0]?.timer?.replace(/ \d{2}:\d{2}:\d{2}/g, '').replace(' ~ ', '~') || '';
             replyMsg += `\n【${stage}】\n⏰ ${timerDisplay}\n`;
-            
+
             const roles = stagePools.filter(p => p._type === '角色');
             if (roles.length > 0) {
-                replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
+                replyMsg += ` ${roles.map(p => `◈ ${p.title || '角色'}：\n   S-${p._s.join(', ')} | A-${p._a.length > 0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
             }
             const weapons = stagePools.filter(p => p._type === '武器');
             if (weapons.length > 0) {
-                replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length>0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
+                replyMsg += ` ${weapons.map(p => `◈ ${p.title || '音擎'}：\n   S-${p._s.join(', ')} | A-${p._a.length > 0 ? p._a.join(', ') : '无'}`).join('\n ')}\n`;
             }
         }
         return e.reply(replyMsg.trim());
@@ -283,7 +283,7 @@ export class CardPoolQuery extends plugin {
         });
         historyList.sort((a, b) => b.days - a.days);
         const displayType = targetType === '武器' ? '音擎' : '角色';
-        
+
         let titleName = `${targetRank}级${displayType}复刻排行`;
         if (targetRank === 'A' && displayType === '角色') titleName = `A级角色复刻排行`;
         if (targetRank === 'A' && displayType === '音擎') titleName = `A级音擎排行`;
@@ -296,9 +296,9 @@ export class CardPoolQuery extends plugin {
     async handleHistoryQuery(e, queryName, rawInputName) {
         let data = await this.fetchData();
         if (!data) return e.reply('数据获取失败。');
-        
+
         let records = data.filter(pool => pool._s.includes(queryName) || pool._a.includes(queryName));
-        
+
         if (records.length === 0) {
             data = await this.fetchData(true);
             if (data) {
@@ -329,12 +329,12 @@ export class CardPoolQuery extends plugin {
         return { startTime: isNaN(startTime.getTime()) ? null : startTime, endTime: isNaN(endTime.getTime()) ? null : endTime };
     }
 
-async fetchData(forceFetch = false) {
+    async fetchData(forceFetch = false) {
         const now = Date.now();
         let localBase = [];
         let lastModified = 0;
         const dataPath = path.join(process.cwd(), 'data', 'zzz_full_history.json');
-        
+
         if (fs.existsSync(dataPath)) {
             try {
                 localBase = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
@@ -359,7 +359,7 @@ async fetchData(forceFetch = false) {
 
         let allData = [];
         const localEndTimes = new Set();
-        
+
         // 建立防覆盖护盾
         localBase.forEach(p => {
             const t = p._endTimeStamp || (p.timer ? new Date(p.timer.split('~')[1].trim()).getTime() : 0);
@@ -370,25 +370,25 @@ async fetchData(forceFetch = false) {
         try {
             // 直接高速拉取 CDN 上的 json，彻底免疫限流
             const res = await fetch(HISTORY_JSON_URL, { timeout: 15000 });
-            if (res.ok) { 
-                const json = await res.json(); 
+            if (res.ok) {
+                const json = await res.json();
                 const arr = Array.isArray(json) ? json : [json];
                 arr.forEach(remotePool => {
                     let timerRaw = remotePool.timer;
                     if (Array.isArray(timerRaw)) timerRaw = timerRaw.join(' ~ ');
                     if (!timerRaw && remotePool.start && remotePool.end) timerRaw = `${remotePool.start} ~ ${remotePool.end}`;
-                    
+
                     // 兼容特殊的连接符号
                     if (timerRaw) timerRaw = String(timerRaw).replace(/[-—]/g, '~');
                     if (!timerRaw || !timerRaw.includes('~')) return;
 
                     const parts = timerRaw.split('~');
                     if (parts.length < 2) return;
-                    
+
                     const t = new Date(parts[1].trim()).getTime();
                     let rawType = String(remotePool.type || remotePool.pool_type || '').toLowerCase();
                     let pType = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
-                    
+
                     // 拦截旧数据，只存入新卡池
                     if (!localEndTimes.has(`${pType}_${t}`)) {
                         allData.push(remotePool);
@@ -397,25 +397,25 @@ async fetchData(forceFetch = false) {
             } else {
                 logger.error(`[卡池查询] 远程数据拉取失败，状态码: ${res.status}`);
             }
-        } catch (err) { 
+        } catch (err) {
             logger.error(`[卡池查询] 远程网络请求异常: ${err.message}`);
         }
-        
+
         const aliasMap = await this.getAliasMap();
-        
+
         allData.push(...localBase);
         allData = this.preprocessData(allData, aliasMap);
-        
+
         const uniqueData = [], seen = new Set();
         for (const p of allData) {
             const key = `${p._type}_${p._endTimeStamp}_${p._s[0] || 'Unknown'}`;
             if (!seen.has(key)) { seen.add(key); uniqueData.push(p); }
         }
-        
+
         // 自动迭代写入本地，清洗冗余字段，只保存最精简的 5 个核心数据
         try {
             const exportData = uniqueData.map(p => ({
-                title: p.title|| '',
+                title: p.title || '',
                 type: p._type,
                 version: p._version,
                 timer: p.timer,
@@ -436,11 +436,11 @@ async fetchData(forceFetch = false) {
             pool.timer = timerStr;
             let rawType = String(pool.type || pool.pool_type || '').toLowerCase();
             pool._type = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
-            
+
             // 拥抱新结构：直接提取明确的 s 和 a 字段
             let sRaw = pool.s || pool.up5 || pool['5'] || pool._s || [];
             let aRaw = pool.a || pool.up4 || pool['4'] || pool._a || [];
-            
+
             // 新格式中 s 变成了单字符串（如 "s": "南宫羽"），这里兼容转为数组
             let parsedS = (Array.isArray(sRaw) ? sRaw : [sRaw]).filter(Boolean).map(x => typeof x === 'object' ? x.title || x.name : String(x));
             let parsedA = (Array.isArray(aRaw) ? aRaw : [aRaw]).filter(Boolean).map(x => typeof x === 'object' ? x.title || x.name : String(x));
@@ -453,9 +453,9 @@ async fetchData(forceFetch = false) {
             const parts = pool.timer.split('~');
             pool._endTimeStamp = parts.length >= 2 ? new Date(parts[1].trim()).getTime() || 0 : 0;
         });
-        
+
         data.sort((a, b) => a._endTimeStamp - b._endTimeStamp);
-        
+
         for (let i = 0; i < data.length; i++) {
             const p = data[i];
             // 自动推算“x.x版本更新后”的具体日期
@@ -467,7 +467,7 @@ async fetchData(forceFetch = false) {
                     p.timer = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} 11:00:00 ~ ${p.timer.split('~')[1]}`;
                 } else p.timer = `2024/07/04 10:00:00 ~ ${p.timer.split('~')[1]}`;
             }
-            
+
             if (p.version && typeof p.version === 'string') {
                 p._version = String(p.version).trim();
             } else {
