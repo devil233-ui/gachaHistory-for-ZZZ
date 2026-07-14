@@ -3,7 +3,7 @@ import fetch from 'node-fetch'
 import fs from 'fs'
 import path from 'path'
 
-const HISTORY_JSON_URL = 'https://raw.githubusercontent.com/iaoongin/GachaClock/main/spider/data/zzz/history.json';
+const BWIKI_URL = 'https://wiki.biligame.com/zzz/%E8%B0%83%E9%A2%91';
 
 const ALIAS_SOURCES = [
     'https://raw.githubusercontent.com/ZZZure/ZZZ-Plugin/main/defSet/alias.yaml',
@@ -27,6 +27,7 @@ export class CardPoolQuery extends plugin {
             event: "message",
             priority: -114514,
             rule: [
+                // ^(#绝区零|%|绝区零) 限制了只响应这三种前缀
                 { reg: '^(#绝区零|%|绝区零).*复刻统计$', fnc: 'dispatchHandler' },
                 { reg: '^(#绝区零|%|绝区零)v?(\\d+\\.\\d+)(上半|下半|上下半)?卡池$', fnc: 'dispatchVersionHandler' },
                 { reg: '^(#绝区零|%|绝区零)(当前|本期|当期)卡池$', fnc: 'queryCurrentPool' }
@@ -368,37 +369,86 @@ export class CardPoolQuery extends plugin {
         });
 
         try {
-            // 直接高速拉取 CDN 上的 json，彻底免疫限流
-            const res = await fetch(HISTORY_JSON_URL, { timeout: 15000 });
+            // 直接从 Bwiki 扒取官方最新页面，抛弃断更仓库
+            const res = await fetch(BWIKI_URL, {
+                timeout: 15000,
+                headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }
+            });
+
             if (res.ok) {
-                const json = await res.json();
-                const arr = Array.isArray(json) ? json : [json];
-                arr.forEach(remotePool => {
-                    let timerRaw = remotePool.timer;
-                    if (Array.isArray(timerRaw)) timerRaw = timerRaw.join(' ~ ');
-                    if (!timerRaw && remotePool.start && remotePool.end) timerRaw = `${remotePool.start} ~ ${remotePool.end}`;
+                const html = await res.text();
+                // 锁定包含卡池信息的 wikitable
+                const tableRegex = /<table class="wikitable" style="text-align:center;">([\s\S]*?)<\/table>/gi;
+                let match;
 
-                    // 兼容特殊的连接符号
-                    if (timerRaw) timerRaw = String(timerRaw).replace(/[-—]/g, '~');
-                    if (!timerRaw || !timerRaw.includes('~')) return;
+                while ((match = tableRegex.exec(html)) !== null) {
+                    const tb = match[1];
 
-                    const parts = timerRaw.split('~');
-                    if (parts.length < 2) return;
+                    // 1. 提取标题 (从 img alt 中提取)
+                    const titleMatch = tb.match(/<img[^>]+alt="([^"]+)"/);
+                    if (!titleMatch) continue;
+                    const title = titleMatch[1].trim();
 
-                    const t = new Date(parts[1].trim()).getTime();
-                    let rawType = String(remotePool.type || remotePool.pool_type || '').toLowerCase();
-                    let pType = rawType.includes('角色') || rawType === 'character' ? '角色' : '武器';
+                    // 2. 提取时间
+                    const timerMatch = tb.match(/<th[^>]*>\s*时间\s*<\/th>\s*<td>([\s\S]*?)<\/td>/);
+                    if (!timerMatch) continue;
+                    let timer = timerMatch[1].replace(/<[^>]+>/g, '').trim();
+                    timer = timer.replace(/[-—]/g, '~');
+                    if (!timer || !timer.includes('~')) continue;
 
-                    // 拦截旧数据，只存入新卡池
-                    if (!localEndTimes.has(`${pType}_${t}`)) {
-                        allData.push(remotePool);
+                    // 3. 提取版本
+                    const versionMatch = tb.match(/<th[^>]*>\s*版本\s*<\/th>\s*<td>([\s\S]*?)<\/td>/);
+                    let version = versionMatch ? versionMatch[1].replace(/<[^>]+>/g, '').trim() : "未知版本";
+
+                    // 4. 提取 S级 (精准提取 a 标签的 title 属性，天然去除了（击破·火）等冗余后缀)
+                    const sMatch = tb.match(/<th[^>]*>\s*S级[^<]*<\/th>\s*<td>([\s\S]*?)<\/td>/);
+                    let sRanks = [];
+                    if (sMatch) {
+                        const aRegex = /<a[^>]+title="([^"]+)"/g;
+                        let aTag;
+                        while ((aTag = aRegex.exec(sMatch[1])) !== null) {
+                            sRanks.push(aTag[1].trim());
+                        }
                     }
-                });
+
+                    // 5. 提取 A级
+                    const aMatch = tb.match(/<th[^>]*>\s*A级[^<]*<\/th>\s*<td>([\s\S]*?)<\/td>/);
+                    let aRanks = [];
+                    if (aMatch) {
+                        const aRegex = /<a[^>]+title="([^"]+)"/g;
+                        let aTag;
+                        while ((aTag = aRegex.exec(aMatch[1])) !== null) {
+                            aRanks.push(aTag[1].trim());
+                        }
+                    }
+
+                    // 若数据残缺则跳过
+                    if (sRanks.length === 0 || !timer) continue;
+
+                    // 6. 识别类型并触发“增量护盾”
+                    let pType = title.includes("独家") ? "角色" : "武器";
+                    if (title.includes("音擎")) pType = "武器";
+
+                    const endTimeStr = timer.split('~')[1].trim();
+                    const t = new Date(endTimeStr).getTime();
+
+                    // 核心：只补缺！只要本地 JSON 里没有这个结束时间，才把它推进待定数组
+                    if (!isNaN(t) && !localEndTimes.has(`${pType}_${t}`)) {
+                        allData.push({
+                            title: title,
+                            type: pType,
+                            version: version,
+                            timer: timer,
+                            s: sRanks,
+                            a: aRanks
+                        });
+                    }
+                }
             } else {
-                logger.error(`[卡池查询] 远程数据拉取失败，状态码: ${res.status}`);
+                logger.error(`[卡池查询] Bwiki 拉取失败，状态码: ${res.status}`);
             }
         } catch (err) {
-            logger.error(`[卡池查询] 远程网络请求异常: ${err.message}`);
+            logger.error(`[卡池查询] Bwiki 网络请求异常: ${err.message}`);
         }
 
         const aliasMap = await this.getAliasMap();
