@@ -506,16 +506,36 @@ export class CardPoolQuery extends plugin {
 
         data.sort((a, b) => a._endTimeStamp - b._endTimeStamp);
 
+        // 同一版本可能有多个“版本更新后”开始、但结束时间不同的频段。
+        // 先用该版本最早的结束时间定位上一版本，避免长线频段被误算到下半。
+        const versionUpdateEnds = new Map();
+        for (const p of data) {
+            if (!p.timer.includes('版本更新后') || p._endTimeStamp <= 0) continue;
+            const versionKey = String(p.version || '').match(/\d+\.\d+/)?.[0] || String(p.version || '').trim();
+            const earliestEnd = versionUpdateEnds.get(versionKey);
+            if (!earliestEnd || p._endTimeStamp < earliestEnd) versionUpdateEnds.set(versionKey, p._endTimeStamp);
+        }
+
+        const versionUpdateStarts = new Map();
+        for (const [versionKey, earliestEnd] of versionUpdateEnds) {
+            let prevEnd = 0;
+            for (const p of data) {
+                if (p._endTimeStamp > prevEnd && p._endTimeStamp < earliestEnd) prevEnd = p._endTimeStamp;
+            }
+            if (prevEnd > 0) {
+                const d = new Date(prevEnd);
+                d.setDate(d.getDate() + 1);
+                versionUpdateStarts.set(versionKey, `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} 11:00:00`);
+            }
+        }
+
         for (let i = 0; i < data.length; i++) {
             const p = data[i];
             // 自动推算“x.x版本更新后”的具体日期
             if (p.timer.includes('版本更新后')) {
-                let prevEnd = 0;
-                for (let j = i - 1; j >= 0; j--) { if (data[j]._endTimeStamp > 0 && data[j]._endTimeStamp < p._endTimeStamp) { prevEnd = data[j]._endTimeStamp; break; } }
-                if (prevEnd > 0) {
-                    const d = new Date(prevEnd); d.setDate(d.getDate() + 1);
-                    p.timer = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')} 11:00:00 ~ ${p.timer.split('~')[1]}`;
-                } else p.timer = `2024/07/04 10:00:00 ~ ${p.timer.split('~')[1]}`;
+                const versionKey = String(p.version || '').match(/\d+\.\d+/)?.[0] || String(p.version || '').trim();
+                const startTime = versionUpdateStarts.get(versionKey) || '2024/07/04 10:00:00';
+                p.timer = `${startTime} ~ ${p.timer.split('~')[1]}`;
             }
 
             if (p.version && typeof p.version === 'string') {
